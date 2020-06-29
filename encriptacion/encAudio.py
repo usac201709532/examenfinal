@@ -3,29 +3,31 @@ from socket import socket, error
 import os
 import logging
 from  string import ascii_lowercase, ascii_uppercase
+import base64
 
 
-SERVER_ADDR = '167.71.243.238'
+SERVER_ADDR = ''
+#SERVER_ADDR = '167.71.243.238'
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
 
 class arch(object):
     def Encriptacion(texto, pasos):
-            resultado = []
+        resultado = []
 
-            for i in texto:
-                if i in ascii_lowercase:
-                    indice = ascii_lowercase.index(i)
-                    nuevo_indice = (indice + pasos) % len(ascii_lowercase) 
-                    resultado.append(ascii_lowercase[nuevo_indice])
-                elif i in ascii_uppercase:
-                    indice = ascii_uppercase.index(i)
-                    nuevo_indice = (indice + pasos) % len(ascii_uppercase) 
-                    resultado.append(ascii_uppercase[nuevo_indice])
-                else:
-                    resultado.append(i)
+        for i in texto:
+            if i in ascii_lowercase:
+                indice = ascii_lowercase.index(i)
+                nuevo_indice = (indice + pasos) % len(ascii_lowercase) 
+                resultado.append(ascii_lowercase[nuevo_indice])
+            elif i in ascii_uppercase:
+                indice = ascii_uppercase.index(i)
+                nuevo_indice = (indice + pasos) % len(ascii_uppercase) 
+                resultado.append(ascii_uppercase[nuevo_indice])
+            else:
+                resultado.append(i)
 
-            return ''.join(resultado)
+        return ''.join(resultado)
 
     def enviar2():   
         sock = socket()
@@ -34,12 +36,10 @@ class arch(object):
         f=open("enviado.wav", "rb")             #abrimos el archivo como f
         fileContent = f.read()                  #luego almacenamos en filecontent
         f.close()
-        byteArray = bytearray(fileContent)  
-            #ingresamos el contenido en bytearray
-        a=str(byteArray)
-        
-        b = arch.Encriptacion(a,1)
-        print(b)
+        byteArray = bytearray(fileContent) 
+        a = arch.Encriptacion(byteArray,1)
+        print(byteArray)
+        print(a)
         sock.send(byteArray)
         sock.close()
         #lo publicamos con el destino dado
@@ -58,7 +58,7 @@ class arch(object):
         os.system('aplay enviado.wav')
 
 
-duracion = input('------Ingrese la duracion del audio(Seg.): ')     #pedimos el tiempo de grabacion
+duracion = input('Ingrese la duracion del audio')     #pedimos el tiempo de grabacion
 arch.grabar(duracion)            #llamamos funcion grabar con el valor de duracion
 arch.enviar2()        #Luego de grabar enviamos el audio
 
