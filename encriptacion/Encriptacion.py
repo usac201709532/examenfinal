@@ -40,10 +40,10 @@ if __name__ == "__main__":
 
     
     texto = "Ejemplo de encriptacion en python"
-    a = enc.Encriptacion(texto, 1) #se hace la rotacion solo de un paso, por eso va el uno. Se puede cambiar y no importa 
+    a = enc.Encriptacion(texto, 3500) #se hace la rotacion solo de un paso, por eso va el uno. Se puede cambiar y no importa 
     b=str(a)
     print(b)
 
-    c = enc.Desencriptacion(b,1)
+    c = enc.Desencriptacion(b,3500)
     d=str(c)
     print(d)
