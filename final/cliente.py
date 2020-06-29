@@ -12,13 +12,28 @@ from broker import * #Informacion de la conexion
 SERVER_ADDR = ''
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
+CMD_ID = 'comandos/22/201701026'
 
-class Cliente: 
+
+class Comandos:
+    def __init__(self, comando):
+        self.comando = comando
+        #self.detectar(l1)
+
+    def ftr(self,destino,tamaño,client):
+        destin = str(destino).encode()
+        tam = str(tamaño).encode()
+        FTR = b'\x03' + b'$' + destin + b'$' + tam
+        print(FTR)
+        client.publish(CMD_ID, FTR)
+        print(tamaño)
+        print(destino)
+
+class Cliente(Comandos): 
     def __init__(self, subs, destino):
         self.subs = subs
         self.destino = destino
-
-
+        
     def conecmqtt(self):
         client = mqtt.Client(clean_session=True)
         client.on_message = self.on_message
@@ -49,7 +64,7 @@ class Cliente:
             client.subscribe('salas/'+linea[:2]+'/'+linea[2:])
             client.subscribe('audio/'+linea[:2]+'/'+linea[2:])
         f.close()
-        #client.subscribe("comandos/22/"+ self.id)
+        client.subscribe("comandos/22/"+ self.id)
 
         def recibir():
             while True:
@@ -62,10 +77,11 @@ class Cliente:
         #Luego de configurar cada hilo, se inicializan
         t1.start()
 
-        FTR = b'\x04201701026' 
+        ide = str(self.id).encode()
+        Ali = b'\x04' + ide
         def ALIVE():
             while True:
-                client.publish('comandos/22/201701026', FTR)
+                client.publish('comandos/22', Ali)
                 #print("contadpor : "+ str(i))
                 time.sleep(2) #Delay en segundos
 
@@ -133,24 +149,29 @@ class Cliente:
                             n =0
                         else:
                             n =1
-                    destino = 'usuarios/22/' + destino 
+                    destino =  destino 
                     self.menu3 = '1'
                     duracion = input('------Ingrese la duracion del audio(Seg.): ')
-                    self.enviaraudio(client,destino,duracion)
+                    self.grabarAu(duracion,destino,client)
+
+                    #self.enviaraudio(client,destino)
 
                 if(self.menu2 == '2'):
                     print("------A SALA------")
                     while n !=1:
-                        destino = input("Ingrese la sala: salas/22/:")
+                        destino = input("Ingrese la sala: Ej.('22/S01'): ")
                         if(len(destino) != 4):
                             print("Sala invalida!!! Vuelva a ingresar")
                             n =0
                         else:
                             n =1
-                    destino = 'salas/22/' + destino
+                    destino = destino
                     self.menu3 = '1'
                     duracion = input('------Ingrese la duracion del audio(Seg.): ')
-                    self.enviaraudio(client,destino,duracion)
+                    self.grabarAu(duracion,destino,client)
+
+            if(self.menu1 =='3'):
+                exit()
 
     def enviartxt(self, client, destino):
         msm = input("escribe y manda...")
@@ -158,17 +179,21 @@ class Cliente:
         client.publish(destino, msm)       #JFMB publicamos la info al destino
         print("-------Enviado--------- ")
     
-    def enviaraudio(self, client, destino,duracion):
+    def grabarAu(self,duracion,destino,client):
         logging.basicConfig(level = logging.DEBUG, format = '%(message)s')
         logging.info('Comenzando grabacion')
-        os.system('arecord -d '+str(duracion)+ ' -f U8 -r 8000 enviado.mp3')
+        os.system('arecord -d '+str(duracion)+ ' -f U8 -r 8000 enviado.wav')
         logging.info('Grabacion finalizada, inicia reproduccion')
-        os.system('aplay enviado.mp3')      
+        os.system('aplay enviado.wav')    
+        tamaño = os.stat('enviado.wav').st_size
+        self.ftr(destino,tamaño,client)
+
+    def enviaraudio(self):
         sock = socket()
         sock.connect((SERVER_ADDR, SERVER_PORT))
         while True:
             print("Enviando Audio...")
-            audio = open('enviado.mp3', 'rb') 
+            audio = open('enviado.wav', 'rb') 
             archivo = audio.read(64*1024)
             while archivo:
                 sock.send(archivo)
@@ -184,48 +209,56 @@ class Cliente:
         print("Cerrando el servidor...")          
 
     def on_message(self, client, userdata, msg):
-        print("\n --------NUEVO MENSJAE!----------")
-        print(str(datetime.datetime.now().ctime()) + ": " +str(msg.payload.decode("utf-8")))
-        print("--------------------------------")
-        if (self.menu1 == '0' and self.menu2 =='0'):
-            print("Que desea?")
-            print("1. Enviar Texto")
-            print("2. Enviar Audio")    
-            print("3. Salir")
-        elif (self.menu1 == '1' and self.menu2 =='0'):
-            print("------MENSAJE DE TEXTO------")
-            print("     1. Enviar a Usuario")
-            print("     2. Enviar a Sala")            
-            print("Que desea?")   
-        elif (self.menu1 == '2' and self.menu2 =='0'):
-            print("------MENSAJE DE AUDIO------")
-            print("     1. Enviar a Usuario")
-            print("     2. Enviar a Sala")            
-            print("Que desea?")  
-        elif (self.menu1 == '1' and self.menu2 =='1' and self.menu3 == '0') :
-            print("------MENSAJE DE TEXTO A USUARIO------")
-            print("Ingrese Id Usuario a mandar MSM: usuarios/22/:")
-        elif (self.menu1 == '1' and self.menu2 =='1' and self.menu3 == '1') :
-            print("------MENSAJE DE TEXTO A USUARIO------")
-            print("Escriba mesnaje y mande:")
-        elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '0') :
-            print("------MENSAJE DE TEXTO A SALA------")
-            print("Ingrese la sala: salas/22/S:")
-        elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '1') :
-            print("------MENSAJE DE TEXTO A SALA------")
-            print("Escriba mesnaje y mande:")    
-        elif (self.menu1 == '2' and self.menu2 =='1' and self.menu3 == '0') :
-            print("------MENSAJE DE AUDIO A USUARIO------")
-            print("Ingrese Id Usuario a mandar MSM: usuarios/22/:")
-        elif (self.menu1 == '1' and self.menu2 =='1' and self.menu3 == '1') :
-            print("------MENSAJE DE AUDIO A USUARIO------")
-            print("Escriba la duracion de grabacion en segundos:")                    
-        elif (self.menu1 == '2' and self.menu2 =='2' and self.menu3 == '0') :
-            print("------MENSAJE DE AUDIO A SALA------")
-            print("Ingrese la sala: salas/22/S:")
-        elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '1') :
-            print("------MENSAJE DE AUDIO A SALA------")
-            print("Escriba la duracion de grabacion en segundos:")                      
+        comensaje = str(msg.payload)
+        if( str(msg.topic) == 'comandos/22/'+self.id and str(msg.payload.decode("utf-8"))=='activ' ):
+            pass  #es el mensaje de alive
+
+        elif( str(msg.topic) == 'comandos/22/'+self.id and str(msg.payload.decode("utf-8"))=='Ok' ):
+            print('OK en FTR, Empezando transmision de Audio...')
+            self.enviaraudio()
+        else:
+            print("\n --------NUEVO MENSJAE!----------")
+            print(str(datetime.datetime.now().ctime()) + " " +str(msg.topic) + ": " +str(msg.payload.decode("utf-8")))
+            print("--------------------------------")
+            if (self.menu1 == '0' and self.menu2 =='0'):
+                print("Que desea?")
+                print("1. Enviar Texto")
+                print("2. Enviar Audio")    
+                print("3. Salir")
+            elif (self.menu1 == '1' and self.menu2 =='0'):
+                print("------MENSAJE DE TEXTO------")
+                print("     1. Enviar a Usuario")
+                print("     2. Enviar a Sala")            
+                print("Que desea?")   
+            elif (self.menu1 == '2' and self.menu2 =='0'):
+                print("------MENSAJE DE AUDIO------")
+                print("     1. Enviar a Usuario")
+                print("     2. Enviar a Sala")            
+                print("Que desea?")  
+            elif (self.menu1 == '1' and self.menu2 =='1' and self.menu3 == '0') :
+                print("------MENSAJE DE TEXTO A USUARIO------")
+                print("Ingrese Id Usuario a mandar MSM: usuarios/22/:")
+            elif (self.menu1 == '1' and self.menu2 =='1' and self.menu3 == '1') :
+                print("------MENSAJE DE TEXTO A USUARIO------")
+                print("Escriba mesnaje y mande:")
+            elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '0') :
+                print("------MENSAJE DE TEXTO A SALA------")
+                print("Ingrese la sala: salas/22/S:")
+            elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '1') :
+                print("------MENSAJE DE TEXTO A SALA------")
+                print("Escriba mesnaje y mande:")    
+            elif (self.menu1 == '2' and self.menu2 =='1' and self.menu3 == '0') :
+                print("------MENSAJE DE AUDIO A USUARIO------")
+                print("Ingrese Id Usuario a mandar MSM: usuarios/22/:")
+            elif (self.menu1 == '2' and self.menu2 =='1' and self.menu3 == '1') :
+                print("------MENSAJE DE AUDIO A USUARIO------")
+                print("Escriba la duracion de grabacion en segundos:")                    
+            elif (self.menu1 == '2' and self.menu2 =='2' and self.menu3 == '0') :
+                print("------MENSAJE DE AUDIO A SALA------")
+                print("Ingrese la sala: salas/22/S:")
+            elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '1') :
+                print("------MENSAJE DE AUDIO A SALA------")
+                print("Escriba la duracion de grabacion en segundos:")                      
         
 
 
