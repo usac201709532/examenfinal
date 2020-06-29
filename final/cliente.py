@@ -8,11 +8,13 @@ import binascii
 import threading #Concurrencia con hilos
 from socket import socket
 from broker import * #Informacion de la conexion
-
+from socket import SHUT_RDWR
+servi = '167.71.243.238'
 SERVER_ADDR = ''
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
 CMD_ID = 'comandos/22/201701026'
+cont=0
 
 
 class Comandos:
@@ -24,10 +26,10 @@ class Comandos:
         destin = str(destino).encode()
         tam = str(tamaño).encode()
         FTR = b'\x03' + b'$' + destin + b'$' + tam
-        print(FTR)
+        #print(FTR)
         client.publish(CMD_ID, FTR)
-        print(tamaño)
-        print(destino)
+        #print(tamaño)
+        #print(destino)
 
 class Cliente(Comandos): 
     def __init__(self, subs, destino):
@@ -72,7 +74,7 @@ class Cliente(Comandos):
                 #print('recibiendo')
                 time.sleep(1) 
 
-        t1 = threading.Thread(name = 'Contador 1 seg', target = recibir,daemon = True)
+        t1 = threading.Thread(name = 'recibir', target = recibir,daemon = True)
 
         #Luego de configurar cada hilo, se inicializan
         t1.start()
@@ -159,8 +161,8 @@ class Cliente(Comandos):
                 if(self.menu2 == '2'):
                     print("------A SALA------")
                     while n !=1:
-                        destino = input("Ingrese la sala: Ej.('22/S01'): ")
-                        if(len(destino) != 4):
+                        destino = input("Ingrese la sala: Ej.('22S01'): ")
+                        if(len(destino) != 5):
                             print("Sala invalida!!! Vuelva a ingresar")
                             n =0
                         else:
@@ -203,19 +205,65 @@ class Cliente(Comandos):
             sock.send(chr(1))
         except TypeError:
             sock.send(bytes(chr(1), "utf-8"))
+        sock.shutdown(SHUT_RDWR)
         audio.close()
         sock.close()
         print("Archivo Enviado")
-        print("Cerrando el servidor...")          
+        print("Cerrando el servidor...")   
+
+    def recibirAu(self):
+        def recibiraudio():
+            sock = socket()
+            sock.connect((servi, SERVER_PORT))
+            try:
+                buff = sock.recv(BUFFER_SIZE)
+                archivo = open("recib.wav", "wb") #Aca se guarda el archivo entrante
+                while buff:
+                    buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
+                    archivo.write(buff)
+
+                archivo.close() #Se cierra el archivo
+
+                print("Recepcion de archivo finalizada")
+
+            finally:
+                print('Conexion al servidor finalizada')
+                sock.close() #Se cierra el socket   
+        recau = threading.Thread(name = 'audio hilo recibir', target = recibiraudio,daemon = True)
+        #Luego de configurar cada hilo, se inicializan
+        recau.start()                 
+
+    def Alivecontinuo(self, client,cont):
+        def aliverapid(cont):
+            c=0
+            cont=1+cont
+            while True:
+                while c <= 4:
+                    c = c+1
+                    time.sleep(2)
+                if(c==4 and cont<=1):
+                    print('no conected')
+
+
+        rapid = threading.Thread(name = 'audio hilo recibir', target = aliverapid(cont) ,daemon = True)
+        #Luego de configurar cada hilo, se inicializan
+        rapid.start() 
 
     def on_message(self, client, userdata, msg):
         comensaje = str(msg.payload)
-        if( str(msg.topic) == 'comandos/22/'+self.id and str(msg.payload.decode("utf-8"))=='activ' ):
-            pass  #es el mensaje de alive
+        if( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x05' ):
+            #cont =1
+            #self.Alivecontinuo(client,cont)
+            pass 
 
-        elif( str(msg.topic) == 'comandos/22/'+self.id and str(msg.payload.decode("utf-8"))=='Ok' ):
+        elif( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x06' ):
             print('OK en FTR, Empezando transmision de Audio...')
             self.enviaraudio()
+        elif( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x07' ):
+            print('---------No estan activos los clientes..-------------')         
+        elif( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x02' ):
+            print('FRR Activas TPc para recepcion!!!!!...')
+            self.recibirAu()
         else:
             print("\n --------NUEVO MENSJAE!----------")
             print(str(datetime.datetime.now().ctime()) + " " +str(msg.topic) + ": " +str(msg.payload.decode("utf-8")))
@@ -259,11 +307,9 @@ class Cliente(Comandos):
             elif (self.menu1 == '1' and self.menu2 =='2' and self.menu3 == '1') :
                 print("------MENSAJE DE AUDIO A SALA------")
                 print("Escriba la duracion de grabacion en segundos:")                      
-        
-
 
 
 class Inicio(Cliente):
     def __init__(self):
         self.conecmqtt()
-Inicio()
+Inicio() 
