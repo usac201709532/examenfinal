@@ -1,9 +1,9 @@
 #Jose Fernando Marticorena Barrientos  201701026
-#
+#Jonathan Mardoqueo Lorenzo Lopez
 
 import paho.mqtt.client as mqtt     #libreria cliente Mqtt
-import logging                      
-import time
+import logging                      #Para mostrar informacoin
+import time                         
 import os                           
 import logging
 import datetime                     #Para generar fecha/hora actual
@@ -12,9 +12,9 @@ import threading                    #Concurrencia con hilos
 from socket import socket
 from broker import *                #Informacion de la conexion
 from socket import SHUT_RDWR
-from  string import ascii_lowercase, ascii_uppercase
+from  string import ascii_lowercase, ascii_uppercase #JMLL Para encriptar el testo
 
-servi = '167.71.243.238'           #constantes para conexion por TCP
+servi = '167.71.243.238'           #JMLL constantes para conexion por TCP
 SERVER_ADDR = ''
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
@@ -45,7 +45,7 @@ class Cliente(Comandos):                            #JFMB Funcion cliente oriant
         client.on_message = self.on_message             #JFMB On message la funcion al recibir un msg
         client.username_pw_set(MQTT_USER, MQTT_PASS)
         client.connect(host = MQTT_HOST, port = MQTT_PORT)  #JFMB conexion al broker
-        self.subscribir(client)                             #LLmamamos al metdo de subscripcion
+        self.subscribir(client)                             #JFMB LLmamamos al metdo de subscripcion
 
     def subscribir(self,client):                     # Metodo para subcrcibir a todos los topicos
         g = open("usuario","r")                     #Se abre el archivo en donde esta el usuario
@@ -180,77 +180,77 @@ class Cliente(Comandos):                            #JFMB Funcion cliente oriant
             if(self.menu1 =='3'):  #JFMB si escogemos la opcion3 sale del programa
                 exit()
 
-    def enviartxt(self, client, destino):   #Metodo para enviar texto
-        msm = input("escribe y manda...")   #ingresamos el texto
+    def enviartxt(self, client, destino):   #JMLL Metodo para enviar texto
+        msm = input("escribe y manda...")   #JMLL Ingresamos el texto
 
-        def Encriptacion(texto, pasos):     #funcion para encriptar texto
-            resultado = []
+        def Encriptacion(texto, pasos):     #JMLL funcion para encriptar texto
+            resultado = []                  #JMLL se crea una lista vacia para guradar el resultado
 
-            for i in texto:
-                if i in ascii_lowercase:
-                    indice = ascii_lowercase.index(i)
-                    nuevo_indice = (indice + pasos) % len(ascii_lowercase) 
-                    resultado.append(ascii_lowercase[nuevo_indice])
-                elif i in ascii_uppercase:
-                    indice = ascii_uppercase.index(i)
-                    nuevo_indice = (indice + pasos) % len(ascii_uppercase) 
-                    resultado.append(ascii_uppercase[nuevo_indice])
+            for i in texto:                 #JMLL se itera por cada caracter del texto original
+                if i in ascii_lowercase:    #JMLL Se verifica si se esta en las minusculas
+                    indice = ascii_lowercase.index(i)    #JMLL se calcula el indice en donde se encuentra el caracter
+                    nuevo_indice = (indice + pasos) % len(ascii_lowercase) #JMLL se calcula nuevo indice para hacer la rotacion y se le suman los pasos.
+                    resultado.append(ascii_lowercase[nuevo_indice])  #JMLL se agrega el nuevo caracter en la lista
+                elif i in ascii_uppercase:  #JMLL se verfica si se esta en las mayusculas
+                    indice = ascii_uppercase.index(i)    #JMLL se calcula el indice en donde se encuentra el caracter
+                    nuevo_indice = (indice + pasos) % len(ascii_uppercase) #JMLL se calcula el nuevo indice para hacer la rotacion y se le suman os pasos
+                    resultado.append(ascii_uppercase[nuevo_indice]) # JMLL Se agrega el nuevo caracter en la lista
                 else:
-                    resultado.append(i)
+                    resultado.append(i)     #JMLL si no encuentra mayusculas o minusculas, se agrega a resultado  ese caracter
 
-            return ''.join(resultado)
-        msm = Encriptacion(msm, 3500) 
-        client.publish(destino, msm)       # publicamos la info al destino
-        print("-------Enviado--------- ")
+            return ''.join(resultado)       #JMLL se cambia el resultado de lista a una cadena de caracteres.
+        msm = Encriptacion(msm, 3500)       #JMLL Se llama la funcion de encriptacion para codificar el mensaje que se enviara.
+        client.publish(destino, msm)       #JMLL publicamos la info al destino
+        print("-------Enviado--------- ")   #JMLL se imprime en patalla que se a enviado el mensaje.
     
-    def grabarAu(self,duracion,destino,client):         
-        logging.basicConfig(level = logging.DEBUG, format = '%(message)s')
-        logging.info('Comenzando grabacion')
-        os.system('arecord -d '+str(duracion)+ ' -f U8 -r 8000 enviado.wav')
-        logging.info('Grabacion finalizada, inicia reproduccion')
-        os.system('aplay enviado.wav')    
-        tamaño = os.stat('enviado.wav').st_size
-        self.ftr(destino,tamaño,client,self.id)
+    def grabarAu(self,duracion,destino,client):     #JMLL Se define el metodo para grabar el audio
+        logging.basicConfig(level = logging.DEBUG, format = '%(message)s')   #JMLL se muestra el mensaje
+        logging.info('Comenzando grabacion')    #JMLL se despliega el mensaje de que comenzo la grabacion
+        os.system('arecord -d '+str(duracion)+ ' -f U8 -r 8000 enviado.wav')   #JMLL Se elijen los parametros y caracteristicas que tendra la grabacion
+        logging.info('Grabacion finalizada, inicia reproduccion')    #JMLL   Se muestra en patalla que finalizo la grabacion
+        os.system('aplay enviado.wav')      #JMLL  Se reproduce el audio recien grabado
+        tamaño = os.stat('enviado.wav').st_size    #JMLL Se obtiene el tamaño del audio, que servira para poder recibirlo sin problemas.
+        self.ftr(destino,tamaño,client,self.id)     #JMLL Sen envia el tamaño del audio
 
-    def enviaraudio(self):
-        sock = socket()
-        sock.connect((SERVER_ADDR, SERVER_PORT))
+    def enviaraudio(self):   #JMLL metodo para enviar el audio
+        sock = socket()      
+        sock.connect((SERVER_ADDR, SERVER_PORT))   #Se conecta al servidor y al puerto
         while True:
-            print("Enviando Audio...")
-            audio = open('enviado.wav', 'rb') 
-            archivo = audio.read(64*1024)
+            print("Enviando Audio...")     #JMLL se imprime en patalla 
+            audio = open('enviado.wav', 'rb')   #JMLL se abre el archivo de audio grabado para enviarlo
+            archivo = audio.read(64*1024)     
             while archivo:
-                sock.send(archivo)
+                sock.send(archivo)              #JMLL se envia el audio por medio de socket
                 archivo = audio.read(64*1024)
             break
         try:
             sock.send(chr(1))
-        except TypeError:
+        except TypeError:                       #JMLL se levanta una excepcion si ocurre un error en el envio del audio
             sock.send(bytes(chr(1), "utf-8"))
         sock.shutdown(SHUT_RDWR)
-        audio.close()
-        sock.close()
-        print("Archivo Enviado")
-        print("Cerrando el servidor...")   
+        audio.close()                           #JMLL se cierra el archivo de audio, para no tener errores en el envio
+        sock.close()                            #JMLL se cierro el socket
+        print("Archivo Enviado")                #JMLL se imprime que se envio el audio
+        print("Cerrando el servidor...")        #JMLL se imprime que se cierra el servidor
 
-#Hilo para recibir audio
-    def recibirAu(self):
-        def recibiraudio():
-            sock = socket()
-            sock.connect((servi, SERVER_PORT))
+#JMLL Hilo para recibir audio
+    def recibirAu(self):                        #JMLLL Se define el metodo para recibir el audio
+        def recibiraudio():                     
+            sock = socket()                     
+            sock.connect((servi, SERVER_PORT))  #JMLLL Se conecta al servidor y al puerto especifico 
             try:
-                buff = sock.recv(BUFFER_SIZE)
-                archivo = open('recibido.wav', 'wb') #Aca se guarda el archivo entrante
+                buff = sock.recv(BUFFER_SIZE)   #JMLLL  Se recibe el audio por medio de socket
+                archivo = open('recibido.wav', 'wb') #JMLL Aca se guarda el archivo entrante
                 while buff:
-                    archivo.write(buff)
-                    buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
+                    archivo.write(buff)             
+                    buff = sock.recv(BUFFER_SIZE) #JMLL Los bloques se van agregando al archivo
 
-                archivo.close() #Se cierra el archivo
-                print("Recepcion de archivo finalizada")
+                archivo.close() #JMLL Se cierra el archivo
+                print("Recepcion de archivo finalizada") #JMLL se muestra, que el archivo se recibio 
 
             finally:
-                print('Conexion al servidor finalizada')
-                sock.close() #Se cierra el socket
+                print('Conexion al servidor finalizada')  #JMLL se imprime, que se cierra la conexion
+                sock.close() #JMLL Se cierra el socket
 
         recau = threading.Thread(name = 'audio hilo recibir', target = recibiraudio,daemon = True)
         #Luego de configurar cada hilo, se inicializan
@@ -273,22 +273,22 @@ class Cliente(Comandos):                            #JFMB Funcion cliente oriant
         rapid.start() 
 
 
-    def Desencriptacion(self, texto, pasos):
-        resultado = []
+    def Desencriptacion(self, texto, pasos): #JMLL metodo para poder Desencriptar el mensaje que se recibe
+        resultado = []                         #JMLL se crea una lista vacia para guardar el nuevo mensaje
 
-        for i in texto:
-            if i in ascii_lowercase:
-                indice = ascii_lowercase.index(i)
-                nuevo_indice = (indice - pasos) % len(ascii_lowercase) 
-                resultado.append(ascii_lowercase[nuevo_indice])
-            elif i in ascii_uppercase:
-                indice = ascii_uppercase.index(i)
-                nuevo_indice = (indice - pasos) % len(ascii_uppercase) 
-                resultado.append(ascii_uppercase[nuevo_indice])
+        for i in texto:  #JMLL se itera por cada caracter del texto original
+            if i in ascii_lowercase:            #JMLL Se verifica si se esta en las minusculas
+                indice = ascii_lowercase.index(i)  #JMLL se calcula el indice en donde se encuentra el caracter
+                nuevo_indice = (indice - pasos) % len(ascii_lowercase)  #JMLL se calcula nuevo indice para hacer la rotacion y se le restan los pasos.
+                resultado.append(ascii_lowercase[nuevo_indice])   #JMLL se agrega el nuevo caracter en la lista
+            elif i in ascii_uppercase:   #JMLL se verfica si se esta en las mayusculas
+                indice = ascii_uppercase.index(i)   #JMLL se calcula el indice en donde se encuentra el caracter
+                nuevo_indice = (indice - pasos) % len(ascii_uppercase)   #JMLL se calcula el nuevo indice para hacer la rotacion y se le restan los pasos
+                resultado.append(ascii_uppercase[nuevo_indice])   # JMLL Se agrega el nuevo caracter en la lista
             else:
-                resultado.append(i)
+                resultado.append(i)    #JMLL si no encuentra mayusculas o minusculas, se agrega a resultado  ese caracter
 
-        return ''.join(resultado)
+        return ''.join(resultado)      #JMLL se cambia el resultado de lista a una cadena de caracteres.
 
     def on_message(self, client, userdata, msg): #JFMbmetodo de recibir los mensajes y mostrarlos
         comensaje = str(msg.payload)
