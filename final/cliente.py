@@ -1,15 +1,20 @@
-import paho.mqtt.client as mqtt
-import logging
+#Jose Fernando Marticorena Barrientos  201701026
+#
+
+import paho.mqtt.client as mqtt     #libreria cliente Mqtt
+import logging                      
 import time
-import os
+import os                           
 import logging
-import datetime #Para generar fecha/hora actual
+import datetime                     #Para generar fecha/hora actual
 import binascii
-import threading #Concurrencia con hilos
+import threading                    #Concurrencia con hilos
 from socket import socket
-from broker import * #Informacion de la conexion
+from broker import *                #Informacion de la conexion
 from socket import SHUT_RDWR
-servi = '167.71.243.238'
+from  string import ascii_lowercase, ascii_uppercase
+
+servi = '167.71.243.238'           #constantes para conexion por TCP
 SERVER_ADDR = ''
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
@@ -17,33 +22,32 @@ CMD_ID = 'comandos/22/201701026'
 cont=0
 
 
-class Comandos:
-    def __init__(self, comando):
+class Comandos:                         #JFMB Creacion de clase comandos 
+    def __init__(self, comando):        #JFMB definimos los objetos
         self.comando = comando
         #self.detectar(l1)
 
-    def ftr(self,destino,tamaño,client):
+    def ftr(self,destino,tamaño,client,id):       #JFMB metodo para comando FTR se manda a llamar en Cliente
         destin = str(destino).encode()
         tam = str(tamaño).encode()
-        FTR = b'\x03' + b'$' + destin + b'$' + tam
-        #print(FTR)
-        client.publish(CMD_ID, FTR)
-        #print(tamaño)
-        #print(destino)
+        comando =  'comandos/22/'+str(id)      
+        FTR = b'\x03' + b'$' + destin + b'$' + tam      #JFMB se adjunta la trama en binario con el codigo de FTR
+        client.publish(comando, FTR)                     #JFMB Se publica la trama  
 
-class Cliente(Comandos): 
+
+class Cliente(Comandos):                            #JFMB Funcion cliente oriantada a comandos
     def __init__(self, subs, destino):
         self.subs = subs
         self.destino = destino
         
-    def conecmqtt(self):
-        client = mqtt.Client(clean_session=True)
-        client.on_message = self.on_message
+    def conecmqtt(self):                            #JFMB metodo para realiar la conexion al mqtt
+        client = mqtt.Client(clean_session=True)   #JFMB cliente como una nueva secion limpia
+        client.on_message = self.on_message             #JFMB On message la funcion al recibir un msg
         client.username_pw_set(MQTT_USER, MQTT_PASS)
-        client.connect(host = MQTT_HOST, port = MQTT_PORT)
-        self.subscribir(client)
+        client.connect(host = MQTT_HOST, port = MQTT_PORT)  #JFMB conexion al broker
+        self.subscribir(client)                             #LLmamamos al metdo de subscripcion
 
-    def subscribir(self,client):                                    # Funcion para subcrcibir a todos los topicos
+    def subscribir(self,client):                     # Metodo para subcrcibir a todos los topicos
         g = open("usuario","r")                     #Se abre el archivo en donde esta el usuario
         while(True):
             linea = g.readline()
@@ -68,17 +72,17 @@ class Cliente(Comandos):
         f.close()
         client.subscribe("comandos/22/"+ self.id)
 
+#JFMB Hilo para recibir mensajes todo el tiempo, con delay al loop start para que reciba en ese tiempo
+
         def recibir():
             while True:
                 client.loop_start()  
-                #print('recibiendo')
                 time.sleep(1) 
 
         t1 = threading.Thread(name = 'recibir', target = recibir,daemon = True)
-
-        #Luego de configurar cada hilo, se inicializan
         t1.start()
 
+#JFMB Hilo para enviar ALIVES con el codigo x04 en comandos/22 y publicarlo directo al servidor
         ide = str(self.id).encode()
         Ali = b'\x04' + ide
         def ALIVE():
@@ -91,9 +95,10 @@ class Cliente(Comandos):
         #Luego de configurar cada hilo, se inicializan
         alive.start()
 
+#  JFMB LLamamos al metodo menu
         self.menu(client)
         
-    def menu(self,client):
+    def menu(self,client):          #JFMB En menu basicamente mostramos la interfaz para el usuario
         while True:
             n = 0
             self.menu3 = '0'
@@ -122,7 +127,7 @@ class Cliente(Comandos):
                                 n = 1
                     destino = 'usuarios/22/' + destino
                     self.menu3 = '1'
-                    self.enviartxt(client,destino)
+                    self.enviartxt(client,destino)          #JFMB LLamamos al metodo que Codifica el Texto y luego lo envia
 
                 if(self.menu2 == '2'):                       #JFMB lo mismo en sala...
                     print("------A SALA------")
@@ -135,9 +140,10 @@ class Cliente(Comandos):
                             n =1
                     destino = 'salas/22/S' + destino
                     self.menu3 = '1'
-                    self.enviartxt(client,destino)    
+                    self.enviartxt(client,destino)     #JFMB LLamamos al metodo que Codifica el Texto y luego lo envia
 
-            if(self.menu1 == '2'):
+
+            if(self.menu1 == '2'):                     #JFMB Menu para enviar mensajes de audio
                 print("------MENSAJE DE VOZ------")
                 print("     1. Enviar a Usuario")
                 print("     2. Enviar a Sala")
@@ -153,11 +159,10 @@ class Cliente(Comandos):
                             n =1
                     destino =  destino 
                     self.menu3 = '1'
-                    duracion = input('------Ingrese la duracion del audio(Seg.): ')
-                    self.grabarAu(duracion,destino,client)
+                    duracion = input('------Ingrese la duracion del audio(Seg.): ')  #Basicamente solo pedimos el destino y la duracion
+                    self.grabarAu(duracion,destino,client)        #llamamos al metodo que graba
 
-                    #self.enviaraudio(client,destino)
-
+            #el mismo procedimiento para las salas
                 if(self.menu2 == '2'):
                     print("------A SALA------")
                     while n !=1:
@@ -172,23 +177,40 @@ class Cliente(Comandos):
                     duracion = input('------Ingrese la duracion del audio(Seg.): ')
                     self.grabarAu(duracion,destino,client)
 
-            if(self.menu1 =='3'):
+            if(self.menu1 =='3'):  #JFMB si escogemos la opcion3 sale del programa
                 exit()
 
-    def enviartxt(self, client, destino):
-        msm = input("escribe y manda...")
-        #msm = "@"+self.id+": "+ msm                   #JFMB se le agrega sel ID al msm para que el receptor sepa quien lo envia
-        client.publish(destino, msm)       #JFMB publicamos la info al destino
+    def enviartxt(self, client, destino):   #Metodo para enviar texto
+        msm = input("escribe y manda...")   #ingresamos el texto
+
+        def Encriptacion(texto, pasos):     #funcion para encriptar texto
+            resultado = []
+
+            for i in texto:
+                if i in ascii_lowercase:
+                    indice = ascii_lowercase.index(i)
+                    nuevo_indice = (indice + pasos) % len(ascii_lowercase) 
+                    resultado.append(ascii_lowercase[nuevo_indice])
+                elif i in ascii_uppercase:
+                    indice = ascii_uppercase.index(i)
+                    nuevo_indice = (indice + pasos) % len(ascii_uppercase) 
+                    resultado.append(ascii_uppercase[nuevo_indice])
+                else:
+                    resultado.append(i)
+
+            return ''.join(resultado)
+        msm = Encriptacion(msm, 3500) 
+        client.publish(destino, msm)       # publicamos la info al destino
         print("-------Enviado--------- ")
     
-    def grabarAu(self,duracion,destino,client):
+    def grabarAu(self,duracion,destino,client):         
         logging.basicConfig(level = logging.DEBUG, format = '%(message)s')
         logging.info('Comenzando grabacion')
         os.system('arecord -d '+str(duracion)+ ' -f U8 -r 8000 enviado.wav')
         logging.info('Grabacion finalizada, inicia reproduccion')
         os.system('aplay enviado.wav')    
         tamaño = os.stat('enviado.wav').st_size
-        self.ftr(destino,tamaño,client)
+        self.ftr(destino,tamaño,client,self.id)
 
     def enviaraudio(self):
         sock = socket()
@@ -211,24 +233,25 @@ class Cliente(Comandos):
         print("Archivo Enviado")
         print("Cerrando el servidor...")   
 
+#Hilo para recibir audio
     def recibirAu(self):
         def recibiraudio():
             sock = socket()
             sock.connect((servi, SERVER_PORT))
             try:
                 buff = sock.recv(BUFFER_SIZE)
-                archivo = open("recib.wav", "wb") #Aca se guarda el archivo entrante
+                archivo = open('recibido.wav', 'wb') #Aca se guarda el archivo entrante
                 while buff:
-                    buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
                     archivo.write(buff)
+                    buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
 
                 archivo.close() #Se cierra el archivo
-
                 print("Recepcion de archivo finalizada")
 
             finally:
                 print('Conexion al servidor finalizada')
-                sock.close() #Se cierra el socket   
+                sock.close() #Se cierra el socket
+
         recau = threading.Thread(name = 'audio hilo recibir', target = recibiraudio,daemon = True)
         #Luego de configurar cada hilo, se inicializan
         recau.start()                 
@@ -249,25 +272,52 @@ class Cliente(Comandos):
         #Luego de configurar cada hilo, se inicializan
         rapid.start() 
 
-    def on_message(self, client, userdata, msg):
+
+    def Desencriptacion(self, texto, pasos):
+        resultado = []
+
+        for i in texto:
+            if i in ascii_lowercase:
+                indice = ascii_lowercase.index(i)
+                nuevo_indice = (indice - pasos) % len(ascii_lowercase) 
+                resultado.append(ascii_lowercase[nuevo_indice])
+            elif i in ascii_uppercase:
+                indice = ascii_uppercase.index(i)
+                nuevo_indice = (indice - pasos) % len(ascii_uppercase) 
+                resultado.append(ascii_uppercase[nuevo_indice])
+            else:
+                resultado.append(i)
+
+        return ''.join(resultado)
+
+    def on_message(self, client, userdata, msg): #JFMbmetodo de recibir los mensajes y mostrarlos
         comensaje = str(msg.payload)
-        if( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x05' ):
+        #Primero en la llegada de los Comandos Direccionar a la accion que debe tomar
+        #JFMB Si llega x05 el ACK pass para no mostrar cada 6 seg que esta activo
+        if( str(msg.topic) == 'comandos/22/'+self.id and (comensaje[3:6] == 'x05' or comensaje[3:6] == 'x03') ):
             #cont =1
             #self.Alivecontinuo(client,cont)
             pass 
-
+        #JFMB si llega x06 el Ok en FTR empezar transmicion de Audio
         elif( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x06' ):
-            print('OK en FTR, Empezando transmision de Audio...')
+            #print('OK en FTR, Empezando transmision de Audio...') solo indicaba que empezaba a enviar el audio
             self.enviaraudio()
+        #JFMB si llega x07 el NO, es porque el destinario no esta conectado
         elif( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x07' ):
-            print('---------No estan activos los clientes..-------------')         
+            print('---------No estan activos los clientes..-------------')   
+        #JFMB si llega x02 el FRR tenemos que activar TCP para recibir audio      
         elif( str(msg.topic) == 'comandos/22/'+self.id and comensaje[3:6] == 'x02' ):
             print('FRR Activas TPc para recepcion!!!!!...')
+            time.sleep(3)
             self.recibirAu()
         else:
-            print("\n --------NUEVO MENSJAE!----------")
-            print(str(datetime.datetime.now().ctime()) + " " +str(msg.topic) + ": " +str(msg.payload.decode("utf-8")))
-            print("--------------------------------")
+            #JFMB aca se leen los mensajes que no sean de comandos, solo usuarios o salas
+            if (str(msg.topic)[:5] == 'salas' or str(msg.topic)[:7] == 'usuario'):
+                c = self.Desencriptacion(str(msg.payload.decode("utf-8")),3500)
+                print("\n --------NUEVO MENSJAE!----------")
+                print(str(datetime.datetime.now().ctime()) + " " +str(msg.topic) + ": " + c)
+                print("--------------------------------")
+            #JFMB Todos los ifs de aca para abajo son configuracion para ver mejor el menu
             if (self.menu1 == '0' and self.menu2 =='0'):
                 print("Que desea?")
                 print("1. Enviar Texto")
@@ -309,7 +359,7 @@ class Cliente(Comandos):
                 print("Escriba la duracion de grabacion en segundos:")                      
 
 
-class Inicio(Cliente):
+class Inicio(Cliente):      #JFMB Clase que da inicio al Cliente
     def __init__(self):
         self.conecmqtt()
 Inicio() 
