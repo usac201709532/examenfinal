@@ -8,7 +8,8 @@ import binascii
 import threading #Concurrencia con hilos
 from socket import socket
 from broker import * #Informacion de la conexion
-
+from socket import SHUT_RDWR
+servi = '167.71.243.238'
 SERVER_ADDR = ''
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
@@ -31,25 +32,56 @@ class Comandos():
         if comando[3:6] == 'x03':
             destino = comando.split('$')[1]
             tamaño = comando.split('$')[2]
-            topic = topic[12:]
-            self.FTR(destino,tamaño,topic,client)
+            emisor = topic[12:]
+            self.FTR(destino,tamaño,emisor,client)
             print(self.vec)
 
-    def FTR(self,destino,tamaño,topic,client):
+    def FTR(self,destino,tamaño,emisor,client):
+        destinos=[]                     #para almacenar los usuarios en salas
+        receptores = []                 #para almacenar a quiener se les mandara FRR
+        if (len(destino)<=6):
+            f = open("salasser","r")               
+            while(True):
+                linea = f.readline()
+                info = linea.split(',')
+                if(destino in info):
+                    destinos.append(info[0])
+                if not linea:
+                    break    
+            f.close()
+            cont = 0
+            for i in range(len(destinos)):
+                if destinos[i] in self.vec:
+                    print('FTR Es en sala activo')
+                    receptores.append(destinos[i])
+                    cont=cont+1
+            if cont>0 :
+               self.OK(emisor,client,receptores,tamaño)
+            else:
+                self.NO(emisor,client)
 
-        if destino in self.vec:
-            print('FTR Es usuario activo')
-            self.OK(topic,client)
 
-    def OK(self,topic,client):
-        topi = str(topic).encode()
-        Ok = b'\x06' + b'$' + topi
-        print(topic)
-        client.publish('comandos/22/'+topic, 'Ok')
+        else:
+            if destino in self.vec:
+                print('FTR Es usuario activo')
+                receptores.append(destino)
+                self.OK(emisor,client,receptores,tamaño)
+            else:
+                self.NO(emisor,client)
+
+    def NO(self,emisor,client):
+        emisr = str(emisor).encode()
+        No = b'\x07' + b'$' + emisr        
+        client.publish('comandos/22/'+ emisor, No)
+        print('NO fue publicado')
+
+    def OK(self,emisor,client,receptores,tamaño):
+        emisr = str(emisor).encode()
+        Ok = b'\x06' + b'$' + emisr
+        print(emisor)
+        client.publish('comandos/22/'+ emisor, Ok)
         print('Ok fue publicado')
-        self.recvaudio()
-        #self.recibiraudio()
-        #os.system('aplay servi.wav') 
+        self.recvaudio(client,receptores,emisor,tamaño) 
         
 
     def Alive(self, usr,client):   
@@ -93,13 +125,15 @@ class Comandos():
         self.vec = activ
         if (len(self.vec)):
             for i in range(len(self.vec)):
-                client.publish('comandos/22/'+self.vec[i], 'activ')
+                idee = str(self.vec[i]).encode()
+                akc = b'\x05' + b'$' + idee
+                client.publish('comandos/22/'+self.vec[i], akc)
 
-    def recvaudio(self):
+    def recvaudio(self,client,receptores,emisor,tamaño):
         def recibiraudio():
             server_socket = socket()
             server_socket.bind((SERVER_ADDR, SERVER_PORT))
-            server_socket.listen(0) #1 conexion activa y 9 en cola
+            server_socket.listen(100) #1 conexion activa y 9 en cola
             
             conn, addr = server_socket.accept()
             audior = open("servi.wav", "wb")
@@ -121,11 +155,55 @@ class Comandos():
                         else:
                             break
                         print("Se ha recibido el archivo")
+                        print('cerrando servidor')
+                        server_socket.shutdown(SHUT_RDWR)
+                        audior.close()
+                        server_socket.close()
+                        self.FRR(client,receptores,emisor,tamaño)
             audior.close()
             server_socket.close()
+        
         au = threading.Thread(name = 'audio hilo', target = recibiraudio,daemon = True)
         #Luego de configurar cada hilo, se inicializan
         au.start() 
+
+    def FRR(self,client,receptores,emisor,tamaño):
+        emisr = str(emisor).encode()
+        tam = str(tamaño).encode()
+        FRR = b'\x02' + b'$' + emisr + b'$' + tam
+        print('Esto son los receptores'+ str(receptores))
+        for i in range(len(receptores)):
+            client.publish('comandos/22/'+str(receptores[i]), FRR ) 
+        self.enviarAu()
+
+    def enviarAu(self):
+        def envrau():
+            
+            server_socket = socket()
+            #server_socket.bind((SERVER_ADDR, SERVER_PORT))
+            server_socket.listen(100) #1 conexion activa y 9 en cola
+            print("\nEsperando conexion remota...\n")
+            conn, addr = server_socket.accept()
+            try:
+                while True:
+                    print('Conexion establecida desde ', addr)
+                    print('Enviando Audio...')
+
+                    audio = open('servi.wav', 'rb') 
+                    archivo = audio.read(64*1024)
+                    while archivo:
+                        conn.sendfile(audio)
+                        archivo = audio.read(64*1024)
+                    audio.close()
+                    conn.close()
+                    print("\n\nArchivo enviado a: ", addr)
+                    break
+            finally:
+                print("Cerrando el servidor...")
+                server_socket.close()        
+        envau = threading.Thread(name = 'audio hilo enviar', target = envrau,daemon = True)
+        #Luego de configurar cada hilo, se inicializan
+        envau.start()  
 
 class Servidor(Comandos):
     def __init__(self, subs, destino):
