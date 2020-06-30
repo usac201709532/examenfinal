@@ -1,5 +1,5 @@
 #Jose Fernando Marticorena Barrientos
-#
+# Jonathan Mardoqueo Lorenzo Lopez
 
 import paho.mqtt.client as mqtt
 import logging
