@@ -5,45 +5,47 @@ import logging
 from  string import ascii_lowercase, ascii_uppercase
 import base64
 
-
-SERVER_ADDR = ''
-#SERVER_ADDR = '167.71.243.238'
+SERVER_ADDR = '167.71.243.238'
 SERVER_PORT = 9822
 BUFFER_SIZE = 64 * 1024
 
 class arch(object):
-    def Encriptacion(texto, pasos):
-        resultado = []
+    def recibir2():
+        sock = socket()
+        sock.connect((SERVER_ADDR, SERVER_PORT))
 
-        for i in texto:
-            if i in ascii_lowercase:
-                indice = ascii_lowercase.index(i)
-                nuevo_indice = (indice + pasos) % len(ascii_lowercase) 
-                resultado.append(ascii_lowercase[nuevo_indice])
-            elif i in ascii_uppercase:
-                indice = ascii_uppercase.index(i)
-                nuevo_indice = (indice + pasos) % len(ascii_uppercase) 
-                resultado.append(ascii_uppercase[nuevo_indice])
-            else:
-                resultado.append(i)
+        try:
+            buff = sock.recv(BUFFER_SIZE)
+            archivo = open('recibido.wav', 'wb') #Aca se guarda el archivo entrante
+            while buff:
+                archivo.write(buff)
+                buff = sock.recv(BUFFER_SIZE) #Los bloques se van agregando al archivo
 
-        return ''.join(resultado)
+            archivo.close() #Se cierra el archivo
+            print("Recepcion de archivo finalizada")
+
+        finally:
+            print('Conexion al servidor finalizada')
+            sock.close() #Se cierra el socket
+
 
     def enviar2():   
         sock = socket()
         sock.connect((SERVER_ADDR, SERVER_PORT))                     
-        #funcion a llamar para enviar audios
-        f=open("enviado.wav", "rb")             #abrimos el archivo como f
-        fileContent = f.read()                  #luego almacenamos en filecontent
-        f.close()
-        byteArray = bytearray(fileContent) 
-        a = arch.Encriptacion(byteArray,1)
-        print(byteArray)
-        print(a)
-        sock.send(byteArray)
-        sock.close()
-        #lo publicamos con el destino dado
-        print("----Audios Enviado-----")
+        try:
+            f=open("enviado.wav", "rb")             #abrimos el archivo como f
+            fileContent = f.read()                  #luego almacenamos en filecontent
+            f.close()
+            byteArray = bytearray(fileContent) 
+            print(byteArray)
+            sock.send(byteArray)
+            print("----Audios Enviado-----")
+            
+        finally:
+            print('Conexion al servidor finalizada')
+            sock.close()
+            #lo publicamos con el destino dado
+           
 
     def grabar(dur):                        #funcion a llamar para grabar audios
         logging.basicConfig(
@@ -58,7 +60,7 @@ class arch(object):
         os.system('aplay enviado.wav')
 
 
-duracion = input('Ingrese la duracion del audio')     #pedimos el tiempo de grabacion
+duracion = input('Ingrese la duracion del audio: ')     #pedimos el tiempo de grabacion
 arch.grabar(duracion)            #llamamos funcion grabar con el valor de duracion
 arch.enviar2()        #Luego de grabar enviamos el audio
 
